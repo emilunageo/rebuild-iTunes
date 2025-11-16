@@ -8,14 +8,14 @@
 import SwiftUI
 
 struct ContentView: View {
+    let mockAlbums = [
+        Album(artistName: "Nsqk", albumName: "ATP", imageName: "atp", isExplicit: true),
+        Album(artistName: "Daniel Caesar", albumName: "superpowers", imageName: "superpowers", isExplicit: false),
+        Album(artistName: "Trueno", albumName: "bienomal", imageName: "trueno", isExplicit: true)
+    ]
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        CarouselView(title: "Recently Played", albums: mockAlbums)
     }
 }
 

@@ -1,6 +1,7 @@
 # Xcode
 *.xcuserstate
-xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
 DerivedData/
 *.moved-aside
 *.xccheckout
@@ -11,15 +12,13 @@ DerivedData/
 Packages/
 Package.pins
 Package.resolved
+.swiftpm/
 
 # CocoaPods
 Pods/
 
 # Carthage
 Carthage/Build/
-
-# SwiftPM
-.swiftpm/
 
 # Fastlane
 fastlane/report.xml
