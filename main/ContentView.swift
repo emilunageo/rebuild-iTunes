@@ -8,14 +8,29 @@
 import SwiftUI
 
 struct ContentView: View {
-    let mockAlbums = [
-        Album(artistName: "Nsqk", albumName: "ATP", imageName: "atp", isExplicit: true),
-        Album(artistName: "Daniel Caesar", albumName: "superpowers", imageName: "superpowers", isExplicit: false),
-        Album(artistName: "Trueno", albumName: "bienomal", imageName: "trueno", isExplicit: true)
-    ]
-    
+    @StateObject private var playerViewModel = PlayerViewModel.shared
+
     var body: some View {
-        CarouselView(title: "Recently Played", albums: mockAlbums)
+        ZStack(alignment: .bottom) {
+            TabView {
+                HomeView()
+                    .tabItem {
+                        Label("Music", systemImage: "music.note")
+                    }
+
+                SearchView()
+                    .tabItem {
+                        Label("Search", systemImage: "magnifyingglass")
+                    }
+            }
+            .environmentObject(playerViewModel)
+
+            // Global Player Mini-Bar
+            if playerViewModel.currentSong != nil {
+                PlayerMiniBar()
+                    .environmentObject(playerViewModel)
+            }
+        }
     }
 }
 
