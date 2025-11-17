@@ -15,16 +15,18 @@ class PlayerViewModel: ObservableObject {
     @Published var isPlaying = false
     @Published var currentTime: TimeInterval = 0
     @Published var duration: TimeInterval = 0
-    
-    private var audioPlayer: AVAudioPlayer?
-    private var timer: Timer?
-    
+    @Published var errorMessage: String?
+
+    private var player: AVPlayer?
+    private var timeObserver: Any?
+    private var statusObserver: NSKeyValueObservation?
+
     static let shared = PlayerViewModel()
-    
+
     private init() {
         setupAudioSession()
     }
-    
+
     private func setupAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
@@ -33,42 +35,92 @@ class PlayerViewModel: ObservableObject {
             print("Failed to set up audio session: \(error)")
         }
     }
-    
+
     func playSong(_ song: Song) {
         // Stop current playback
         stop()
-        
+
         currentSong = song
-        
-        // For MVP, we'll use a local preview audio file
-        // In production, this would download from previewUrl
-        guard let audioURL = Bundle.main.url(forResource: "preview", withExtension: "mp3") else {
-            print("Preview audio file not found")
-            return
+        errorMessage = nil
+
+        // Try to play from Spotify preview URL
+        if let previewURLString = song.previewUrl,
+           let previewURL = URL(string: previewURLString) {
+            playFromURL(previewURL)
+        } else {
+            // Fallback to local preview file if no Spotify preview available
+            if let localURL = Bundle.main.url(forResource: "preview", withExtension: "mp3") {
+                playFromURL(localURL)
+            } else {
+                errorMessage = "No preview available for this track"
+                print("No preview URL available for song: \(song.name)")
+            }
         }
-        
-        do {
-            audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
-            audioPlayer?.prepareToPlay()
-            duration = audioPlayer?.duration ?? 0
-            play()
-        } catch {
-            print("Failed to initialize audio player: \(error)")
+    }
+
+    private func playFromURL(_ url: URL) {
+        let playerItem = AVPlayerItem(url: url)
+        player = AVPlayer(playerItem: playerItem)
+
+        // Observe player status
+        statusObserver = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
+            Task { @MainActor in
+                self?.handlePlayerStatus(item.status)
+            }
         }
+
+        // Observe playback time
+        let interval = CMTime(seconds: 0.1, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+            Task { @MainActor in
+                self?.updateProgress(time)
+            }
+        }
+
+        // Observe when playback ends
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: playerItem,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.stop()
+            }
+        }
+
+        play()
+    }
+
+    private func handlePlayerStatus(_ status: AVPlayerItem.Status) {
+        switch status {
+        case .readyToPlay:
+            if let duration = player?.currentItem?.duration {
+                self.duration = CMTimeGetSeconds(duration)
+            }
+        case .failed:
+            errorMessage = "Failed to load audio"
+            print("Player failed: \(player?.currentItem?.error?.localizedDescription ?? "Unknown error")")
+        case .unknown:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    private func updateProgress(_ time: CMTime) {
+        currentTime = CMTimeGetSeconds(time)
     }
     
     func play() {
-        audioPlayer?.play()
+        player?.play()
         isPlaying = true
-        startTimer()
     }
-    
+
     func pause() {
-        audioPlayer?.pause()
+        player?.pause()
         isPlaying = false
-        stopTimer()
     }
-    
+
     func togglePlayPause() {
         if isPlaying {
             pause()
@@ -76,41 +128,30 @@ class PlayerViewModel: ObservableObject {
             play()
         }
     }
-    
+
     func stop() {
-        audioPlayer?.stop()
-        audioPlayer = nil
+        player?.pause()
+
+        // Remove observers
+        if let timeObserver = timeObserver {
+            player?.removeTimeObserver(timeObserver)
+            self.timeObserver = nil
+        }
+        statusObserver?.invalidate()
+        statusObserver = nil
+
+        NotificationCenter.default.removeObserver(self)
+
+        player = nil
         isPlaying = false
         currentTime = 0
-        stopTimer()
+        duration = 0
     }
-    
+
     func seek(to time: TimeInterval) {
-        audioPlayer?.currentTime = time
+        let cmTime = CMTime(seconds: time, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        player?.seek(to: cmTime)
         currentTime = time
-    }
-    
-    private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.updateProgress()
-            }
-        }
-    }
-    
-    private func stopTimer() {
-        timer?.invalidate()
-        timer = nil
-    }
-    
-    private func updateProgress() {
-        guard let player = audioPlayer else { return }
-        currentTime = player.currentTime
-        
-        // Auto-stop when finished
-        if !player.isPlaying && currentTime > 0 {
-            stop()
-        }
     }
     
     var progress: Double {

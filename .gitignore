@@ -28,3 +28,6 @@ fastlane/screenshots/**/*.png
 # Misc
 .DS_Store
 .idea/
+
+# Sensitive Configuration
+Config.swift
