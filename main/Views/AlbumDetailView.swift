@@ -57,25 +57,70 @@ struct AlbumDetailView: View {
     private var albumHeader: some View {
         VStack(spacing: 16) {
             // Album artwork with blur background
-            ZStack {
-                // Blurred background
-                Image(album.imageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(height: 300)
-                    .blur(radius: 50)
-                    .opacity(0.3)
-                
-                // Main artwork
-                Image(album.imageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 220, height: 220)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+            if let firstImage = album.images.first, let imageURL = URL(string: firstImage.url) {
+                ZStack {
+                    // Blurred background
+                    AsyncImage(url: imageURL) { phase in
+                        if case .success(let image) = phase {
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(height: 300)
+                                .blur(radius: 50)
+                                .opacity(0.3)
+                        }
+                    }
+
+                    // Main artwork
+                    AsyncImage(url: imageURL) { phase in
+                        switch phase {
+                        case .empty:
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(width: 220, height: 220)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay(
+                                    ProgressView()
+                                )
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 220, height: 220)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+                        case .failure:
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(width: 220, height: 220)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay(
+                                    Image(systemName: "music.note")
+                                        .font(.system(size: 60))
+                                        .foregroundColor(.white.opacity(0.6))
+                                )
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 300)
+            } else {
+                ZStack {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 220, height: 220)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            Image(systemName: "music.note")
+                                .font(.system(size: 60))
+                                .foregroundColor(.white.opacity(0.6))
+                        )
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 300)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 300)
             
             // Album info
             VStack(spacing: 8) {

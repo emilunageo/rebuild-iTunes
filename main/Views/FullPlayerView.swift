@@ -14,13 +14,19 @@ struct FullPlayerView: View {
     var body: some View {
         ZStack {
             // Background with blur
-            if let song = playerViewModel.currentSong {
-                Image(song.album.imageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .ignoresSafeArea()
-                    .blur(radius: 100)
-                    .opacity(0.3)
+            if let song = playerViewModel.currentSong,
+               let firstImage = song.album.images.first,
+               let imageURL = URL(string: firstImage.url) {
+                AsyncImage(url: imageURL) { phase in
+                    if case .success(let image) = phase {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .ignoresSafeArea()
+                            .blur(radius: 100)
+                            .opacity(0.3)
+                    }
+                }
             }
             
             VStack(spacing: 0) {
@@ -42,13 +48,51 @@ struct FullPlayerView: View {
                 
                 if let song = playerViewModel.currentSong {
                     // Album artwork
-                    Image(song.album.imageName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(maxWidth: 320, maxHeight: 320)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+                    if let firstImage = song.album.images.first, let imageURL = URL(string: firstImage.url) {
+                        AsyncImage(url: imageURL) { phase in
+                            switch phase {
+                            case .empty:
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.3))
+                                    .frame(maxWidth: 320, maxHeight: 320)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(
+                                        ProgressView()
+                                    )
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(maxWidth: 320, maxHeight: 320)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+                            case .failure:
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.3))
+                                    .frame(maxWidth: 320, maxHeight: 320)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(
+                                        Image(systemName: "music.note")
+                                            .font(.system(size: 60))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    )
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
                         .padding(.horizontal, 40)
+                    } else {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(maxWidth: 320, maxHeight: 320)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                Image(systemName: "music.note")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.white.opacity(0.6))
+                            )
+                            .padding(.horizontal, 40)
+                    }
                     
                     Spacer()
                     

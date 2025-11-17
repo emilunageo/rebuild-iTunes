@@ -88,7 +88,7 @@ class PlayerViewModel: ObservableObject {
             }
         }
 
-        play()
+        // Don't call play() here - wait for readyToPlay status
     }
 
     private func handlePlayerStatus(_ status: AVPlayerItem.Status) {
@@ -96,6 +96,10 @@ class PlayerViewModel: ObservableObject {
         case .readyToPlay:
             if let duration = player?.currentItem?.duration {
                 self.duration = CMTimeGetSeconds(duration)
+            }
+            // Auto-play when ready
+            if !isPlaying {
+                play()
             }
         case .failed:
             errorMessage = "Failed to load audio"
@@ -122,6 +126,8 @@ class PlayerViewModel: ObservableObject {
     }
 
     func togglePlayPause() {
+        guard player != nil else { return }
+
         if isPlaying {
             pause()
         } else {
