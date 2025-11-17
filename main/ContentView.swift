@@ -22,6 +22,21 @@ struct ContentView: View {
                     .tabItem {
                         Label("Search", systemImage: "magnifyingglass")
                     }
+
+                MusicVideosView()
+                    .tabItem {
+                        Label("Videos", systemImage: "play.rectangle.fill")
+                    }
+
+                RingtonesView()
+                    .tabItem {
+                        Label("Ringtones", systemImage: "bell.fill")
+                    }
+
+                AccountMenuView()
+                    .tabItem {
+                        Label("Account", systemImage: "person.circle.fill")
+                    }
             }
             .environmentObject(playerViewModel)
 
