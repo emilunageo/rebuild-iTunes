@@ -11,6 +11,12 @@ struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
     @EnvironmentObject var playerViewModel: PlayerViewModel
 
+    // Mock price generator for grid items
+    private func mockPrice(for index: Int) -> String {
+        let prices = ["$0.99", "$1.29", "$0.99", "$1.29", "$0.99", "$1.29", "$0.99", "$1.29"]
+        return prices[index % prices.count]
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -46,18 +52,27 @@ struct HomeView: View {
                                 .fontWeight(.bold)
                                 .padding(.horizontal)
 
-                            ForEach(viewModel.topSongs) { song in
-                                Button {
-                                    playerViewModel.playSong(song)
-                                } label: {
-                                    SongRow(
-                                        song: song,
-                                        isPlaying: playerViewModel.currentSong?.id == song.id && playerViewModel.isPlaying
-                                    )
-                                    .padding(.horizontal)
+                            LazyVGrid(
+                                columns: [
+                                    GridItem(.flexible(), spacing: 16),
+                                    GridItem(.flexible(), spacing: 16)
+                                ],
+                                spacing: 20
+                            ) {
+                                ForEach(Array(viewModel.topSongs.enumerated()), id: \.element.id) { index, song in
+                                    Button {
+                                        playerViewModel.playSong(song)
+                                    } label: {
+                                        SongGridItem(
+                                            song: song,
+                                            price: mockPrice(for: index),
+                                            isPlaying: playerViewModel.currentSong?.id == song.id && playerViewModel.isPlaying
+                                        )
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .buttonStyle(PlainButtonStyle())
                             }
+                            .padding(.horizontal)
                         }
                     }
 

@@ -16,16 +16,16 @@ struct AccountMenuView: View {
                 // Account Section
                 Section {
                     NavigationLink(destination: InfoView(title: "Account")) {
-                        MenuRow(icon: "person.circle.fill", title: "View Account", iconColor: .blue)
+                        MenuRow(icon: "person.circle.fill", title: "View Account", iconColor: .primary)
                     }
                     
                     NavigationLink(destination: PurchasedView()) {
-                        MenuRow(icon: "bag.fill", title: "Purchased", iconColor: .green)
+                        MenuRow(icon: "bag.fill", title: "Purchased", iconColor: .primary)
                     }
                     
                     NavigationLink(destination: DownloadsView()) {
                         HStack {
-                            MenuRow(icon: "arrow.down.circle.fill", title: "Downloads", iconColor: .orange)
+                            MenuRow(icon: "arrow.down.circle.fill", title: "Downloads", iconColor: .primary)
                             Spacer()
                             // Mock download count badge
                             Text("3")
@@ -45,15 +45,15 @@ struct AccountMenuView: View {
                 // Store Section
                 Section {
                     NavigationLink(destination: RedeemCodeView()) {
-                        MenuRow(icon: "giftcard.fill", title: "Redeem Gift Card or Code", iconColor: .red)
+                        MenuRow(icon: "giftcard.fill", title: "Redeem Gift Card or Code", iconColor: .primary)
                     }
                     
                     NavigationLink(destination: InfoView(title: "Send Gift")) {
-                        MenuRow(icon: "gift.fill", title: "Send Gift", iconColor: .pink)
+                        MenuRow(icon: "gift.fill", title: "Send Gift", iconColor: .primary)
                     }
                     
                     NavigationLink(destination: InfoView(title: "Add Funds")) {
-                        MenuRow(icon: "dollarsign.circle.fill", title: "Add Funds to Apple ID", iconColor: .green)
+                        MenuRow(icon: "dollarsign.circle.fill", title: "Add Funds to Apple ID", iconColor: .primary)
                     }
                 } header: {
                     Text("Store")
@@ -62,15 +62,15 @@ struct AccountMenuView: View {
                 // Support Section
                 Section {
                     NavigationLink(destination: TermsView()) {
-                        MenuRow(icon: "doc.text.fill", title: "Terms & Conditions", iconColor: .gray)
+                        MenuRow(icon: "doc.text.fill", title: "Terms & Conditions", iconColor: .primary)
                     }
                     
                     NavigationLink(destination: InfoView(title: "Privacy Policy")) {
-                        MenuRow(icon: "hand.raised.fill", title: "Privacy Policy", iconColor: .blue)
+                        MenuRow(icon: "hand.raised.fill", title: "Privacy Policy", iconColor: .primary)
                     }
                     
                     NavigationLink(destination: InfoView(title: "Contact Support")) {
-                        MenuRow(icon: "questionmark.circle.fill", title: "Contact Support", iconColor: .purple)
+                        MenuRow(icon: "questionmark.circle.fill", title: "Contact Support", iconColor: .primary)
                     }
                 } header: {
                     Text("Support")
@@ -102,7 +102,7 @@ struct AccountMenuView: View {
                             }
                         },
                         label: {
-                            MenuRow(icon: "link.circle.fill", title: "Music Quick Links", iconColor: .indigo)
+                            MenuRow(icon: "link.circle.fill", title: "Music Quick Links", iconColor: .primary)
                         }
                     )
                 } header: {

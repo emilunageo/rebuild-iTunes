@@ -15,7 +15,7 @@ struct InfoView: View {
         VStack(spacing: 24) {
             Image(systemName: "info.circle.fill")
                 .font(.system(size: 80))
-                .foregroundColor(.blue)
+                .foregroundColor(.secondary)
                 .padding(.top, 100)
             
             Text(title)
