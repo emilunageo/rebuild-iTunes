@@ -23,6 +23,11 @@ struct ContentView: View {
                         Label("Search", systemImage: "magnifyingglass")
                     }
 
+                MusicMapView()
+                    .tabItem {
+                        Label("Discover", systemImage: "map.fill")
+                    }
+
                 MusicVideosView()
                     .tabItem {
                         Label("Videos", systemImage: "play.rectangle.fill")

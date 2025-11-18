@@ -316,6 +316,182 @@ class SpotifyAPIService {
 
         return response.tracks?.items.map { convertToSong($0) } ?? []
     }
+
+    // MARK: - Regional Music Discovery Methods
+
+    /// Search for "Top 50" playlist for a specific country
+    /// This is more reliable than featured playlists which may not exist for all countries
+    func searchTopPlaylistForCountry(countryCode: String, countryName: String) async throws -> [Song] {
+        print("🔍 Searching for top playlist for \(countryName) (\(countryCode))")
+
+        // Try multiple search strategies to find the best playlist
+        let searchQueries = [
+            "Top 50 \(countryName)",
+            "Top Songs \(countryName)",
+            "Top 100 \(countryName)",
+            "Viral 50 \(countryName)",
+            "Top 50 \(countryCode.uppercased())"  // Try with country code too
+        ]
+
+        for query in searchQueries {
+            let queryItems = [
+                URLQueryItem(name: "q", value: query),
+                URLQueryItem(name: "type", value: "playlist"),
+                URLQueryItem(name: "market", value: countryCode.uppercased()),
+                URLQueryItem(name: "limit", value: "10")  // Increased from 5 to 10 for better results
+            ]
+
+            do {
+                let response: SpotifySearchResponse = try await makeRequest(
+                    endpoint: SpotifyConfig.Endpoints.search,
+                    queryItems: queryItems
+                )
+
+                print("📋 Found \(response.playlists?.items.count ?? 0) playlists for query: \(query)")
+
+                // Log all playlists found for debugging
+                if let playlists = response.playlists?.items {
+                    for (index, playlist) in playlists.enumerated() {
+                        print("  [\(index)] \(playlist.name) by \(playlist.owner?.displayName ?? "unknown")")
+                    }
+                }
+
+                // Find the first playlist that looks like an official chart
+                // Prioritize Spotify-owned playlists
+                if let playlist = response.playlists?.items.first(where: { playlist in
+                    let name = playlist.name.lowercased()
+                    let isSpotifyOwned = playlist.owner?.displayName?.lowercased().contains("spotify") == true ||
+                                        playlist.owner?.id.lowercased() == "spotify"
+                    let hasTopKeyword = name.contains("top 50") || name.contains("top 100") ||
+                                       name.contains("viral 50") || name.contains("top songs")
+
+                    // Prefer Spotify-owned playlists with top keywords
+                    return isSpotifyOwned && hasTopKeyword
+                }) ?? response.playlists?.items.first(where: { playlist in
+                    // Fallback: any playlist with top keywords
+                    let name = playlist.name.lowercased()
+                    return name.contains("top 50") || name.contains("top 100") || name.contains("viral 50")
+                }) {
+                    print("✅ Selected playlist: \(playlist.name) by \(playlist.owner?.displayName ?? "unknown")")
+
+                    // Fetch tracks from this playlist
+                    let tracksResponse: SpotifyPlaylistTracksResponse = try await makeRequest(
+                        endpoint: "/playlists/\(playlist.id)/tracks",
+                        queryItems: [URLQueryItem(name: "limit", value: "10"), URLQueryItem(name: "market", value: countryCode.uppercased())]
+                    )
+
+                    let songs = tracksResponse.items.compactMap { item -> Song? in
+                        guard let track = item.track else { return nil }
+                        return convertToSong(track)
+                    }
+
+                    if !songs.isEmpty {
+                        print("🎵 Found \(songs.count) songs from playlist for \(countryName)")
+                        if let firstSong = songs.first {
+                            print("   First song: \(firstSong.name) by \(firstSong.artistNames)")
+                        }
+                        return songs
+                    }
+                }
+            } catch {
+                print("⚠️ Error searching with query '\(query)': \(error)")
+                // Continue to next search query
+                continue
+            }
+        }
+
+        print("⚠️ No playlists found, trying fallback method for \(countryName)")
+        // Fallback: try new releases for this country
+        return try await fetchNewReleasesTopSongs(countryCode: countryCode)
+    }
+
+    /// Fallback method: Get top songs from new releases
+    private func fetchNewReleasesTopSongs(countryCode: String) async throws -> [Song] {
+        print("🔄 Using fallback: fetching new releases for \(countryCode)")
+
+        let queryItems = [
+            URLQueryItem(name: "country", value: countryCode.uppercased()),
+            URLQueryItem(name: "limit", value: "20")  // Increased limit for better variety
+        ]
+
+        let response: SpotifyNewReleasesResponse = try await makeRequest(
+            endpoint: SpotifyConfig.Endpoints.newReleases,
+            queryItems: queryItems
+        )
+
+        print("📀 Found \(response.albums.items.count) new releases for \(countryCode)")
+
+        // Get the first track from each album
+        var songs: [Song] = []
+        for album in response.albums.items.prefix(10) {  // Increased from 5 to 10
+            do {
+                let albumResponse: SpotifyAlbumResponse = try await makeRequest(
+                    endpoint: "\(SpotifyConfig.Endpoints.albums)/\(album.id)",
+                    queryItems: [URLQueryItem(name: "market", value: countryCode.uppercased())]
+                )
+
+                if let firstTrack = albumResponse.tracks?.items.first {
+                    let song = convertToSong(firstTrack)
+                    songs.append(song)
+                    print("  ✓ Added: \(song.name) by \(song.artistNames)")
+                }
+            } catch {
+                print("  ✗ Failed to fetch album \(album.id): \(error)")
+                continue
+            }
+        }
+
+        if songs.isEmpty {
+            print("⚠️ No songs found from new releases for \(countryCode)")
+        } else {
+            print("✅ Returning \(songs.count) songs from new releases for \(countryCode)")
+        }
+
+        return songs
+    }
+
+    /// Fetch top song for a country (from Top 50 playlist or new releases)
+    func fetchTopSongForCountry(countryCode: String) async throws -> Song? {
+        // Get country name from CountryCoordinates
+        let countryName: String
+        if let countryData = CountryCoordinates.coordinates[countryCode.uppercased()] {
+            countryName = countryData.name
+        } else {
+            // Fallback to using country code as name
+            countryName = countryCode
+        }
+
+        let songs = try await searchTopPlaylistForCountry(countryCode: countryCode, countryName: countryName)
+        return songs.first
+    }
+
+    /// Fetch regional data for multiple countries
+    func fetchRegionalData(for countryCodes: [String]) async throws -> [String: Song] {
+        var regionalData: [String: Song] = [:]
+
+        // Fetch data for each country concurrently
+        await withTaskGroup(of: (String, Song?).self) { group in
+            for countryCode in countryCodes {
+                group.addTask {
+                    do {
+                        let song = try await self.fetchTopSongForCountry(countryCode: countryCode)
+                        return (countryCode, song)
+                    } catch {
+                        print("Failed to fetch data for \(countryCode): \(error)")
+                        return (countryCode, nil)
+                    }
+                }
+            }
+
+            for await (countryCode, song) in group {
+                if let song = song {
+                    regionalData[countryCode] = song
+                }
+            }
+        }
+
+        return regionalData
+    }
 }
 
 // MARK: - Supporting Types

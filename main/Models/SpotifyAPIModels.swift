@@ -145,6 +145,17 @@ struct SpotifyPlaylist: Codable {
     let name: String
     let images: [SpotifyImage]?
     let tracks: SpotifyPlaylistTracks?
+    let owner: SpotifyPlaylistOwner?
+}
+
+struct SpotifyPlaylistOwner: Codable {
+    let id: String
+    let displayName: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case displayName = "display_name"
+    }
 }
 
 struct SpotifyPlaylistTracks: Codable {
@@ -157,6 +168,7 @@ struct SpotifySearchResponse: Codable {
     let tracks: SpotifyTracksPage?
     let albums: SpotifyAlbumsPage?
     let artists: SpotifyArtistsPage?
+    let playlists: SpotifyPlaylistsPage?
 }
 
 struct SpotifyArtistsPage: Codable {
