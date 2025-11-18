@@ -95,6 +95,13 @@ struct HomeView: View {
             .refreshable {
                 await viewModel.loadContent()
             }
+            .alert("Preview Unavailable", isPresented: $playerViewModel.showError) {
+                Button("OK", role: .cancel) {
+                    playerViewModel.showError = false
+                }
+            } message: {
+                Text(playerViewModel.errorMessage ?? "This track doesn't have a preview available.")
+            }
         }
     }
 }

@@ -166,6 +166,13 @@ class SpotifyAPIService {
             )
         }
 
+        // Debug logging for preview URLs
+        if spotifyTrack.previewUrl == nil {
+            print("⚠️ API: Track '\(spotifyTrack.name)' has NO preview URL")
+        } else {
+            print("✅ API: Track '\(spotifyTrack.name)' has preview URL: \(spotifyTrack.previewUrl!)")
+        }
+
         return Song(
             id: spotifyTrack.id,
             name: spotifyTrack.name,

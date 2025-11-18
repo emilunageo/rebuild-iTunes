@@ -16,6 +16,7 @@ class PlayerViewModel: ObservableObject {
     @Published var currentTime: TimeInterval = 0
     @Published var duration: TimeInterval = 0
     @Published var errorMessage: String?
+    @Published var showError = false
 
     private var player: AVPlayer?
     private var timeObserver: Any?
@@ -31,8 +32,10 @@ class PlayerViewModel: ObservableObject {
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
             try AVAudioSession.sharedInstance().setActive(true)
+            print("✅ Audio session configured successfully")
         } catch {
-            print("Failed to set up audio session: \(error)")
+            print("❌ Failed to set up audio session: \(error)")
+            errorMessage = "Audio session setup failed: \(error.localizedDescription)"
         }
     }
 
@@ -42,23 +45,43 @@ class PlayerViewModel: ObservableObject {
 
         currentSong = song
         errorMessage = nil
+        showError = false
+
+        // Debug logging
+        print("\n🎵 ========================================")
+        print("🎵 Attempting to play song: \(song.name)")
+        print("   Artist: \(song.artistNames)")
+        print("   Preview URL: \(song.previewUrl ?? "nil")")
+        print("🎵 ========================================\n")
 
         // Try to play from Spotify preview URL
         if let previewURLString = song.previewUrl,
+           !previewURLString.isEmpty,
            let previewURL = URL(string: previewURLString) {
+            print("   ✅ Valid preview URL found, attempting playback...")
             playFromURL(previewURL)
         } else {
             // Fallback to local preview file if no Spotify preview available
+            print("   ⚠️ No Spotify preview URL available")
             if let localURL = Bundle.main.url(forResource: "preview", withExtension: "mp3") {
+                print("   ✅ Using local preview file")
                 playFromURL(localURL)
             } else {
-                errorMessage = "No preview available for this track"
-                print("No preview URL available for song: \(song.name)")
+                let message = "Preview not available for '\(song.name)'. Spotify doesn't provide preview URLs for all tracks."
+                errorMessage = message
+                showError = true
+                print("   ❌ ERROR: No preview URL and no local preview file found")
+                print("   💡 Spotify often doesn't provide preview URLs for all tracks")
+                print("   💡 This is a limitation of the Spotify Web API, not your app")
             }
         }
     }
 
     private func playFromURL(_ url: URL) {
+        print("🎧 Setting up player with URL: \(url)")
+        print("   URL scheme: \(url.scheme ?? "none")")
+        print("   Is file URL: \(url.isFileURL)")
+
         let playerItem = AVPlayerItem(url: url)
         player = AVPlayer(playerItem: playerItem)
 
@@ -88,25 +111,38 @@ class PlayerViewModel: ObservableObject {
             }
         }
 
+        print("   ⏳ Waiting for player to be ready...")
         // Don't call play() here - wait for readyToPlay status
     }
 
     private func handlePlayerStatus(_ status: AVPlayerItem.Status) {
         switch status {
         case .readyToPlay:
+            print("   ✅ Player ready to play!")
             if let duration = player?.currentItem?.duration {
                 self.duration = CMTimeGetSeconds(duration)
+                print("   Duration: \(formatTime(CMTimeGetSeconds(duration)))")
             }
             // Auto-play when ready
             if !isPlaying {
+                print("   ▶️ Starting playback...")
                 play()
             }
         case .failed:
             errorMessage = "Failed to load audio"
-            print("Player failed: \(player?.currentItem?.error?.localizedDescription ?? "Unknown error")")
+            let error = player?.currentItem?.error
+            print("   ❌ Player FAILED!")
+            print("   Error: \(error?.localizedDescription ?? "Unknown error")")
+            if let nsError = error as NSError? {
+                print("   Error domain: \(nsError.domain)")
+                print("   Error code: \(nsError.code)")
+                print("   Error userInfo: \(nsError.userInfo)")
+            }
         case .unknown:
+            print("   ⏳ Player status: unknown")
             break
         @unknown default:
+            print("   ⚠️ Player status: @unknown default")
             break
         }
     }
@@ -116,11 +152,14 @@ class PlayerViewModel: ObservableObject {
     }
     
     func play() {
+        print("   ▶️ play() called")
         player?.play()
         isPlaying = true
+        print("   Player rate: \(player?.rate ?? 0)")
     }
 
     func pause() {
+        print("   ⏸️ pause() called")
         player?.pause()
         isPlaying = false
     }
